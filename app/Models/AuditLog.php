@@ -100,4 +100,9 @@ class AuditLog extends Model
     {
         return $query->where('model_type', $modelType);
     }
+
+    public function prunable()
+    {
+        return static::where('created_at', '<=', now()->subYear());
+    }
 }

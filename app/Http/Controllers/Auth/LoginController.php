@@ -14,6 +14,11 @@ class LoginController extends Controller
      */
     public function showLoginForm()
     {
+        // Redirect if already authenticated
+        if (Auth::check()) {
+            return $this->redirectBasedOnRole(Auth::user());
+        }
+
         return view('auth.login');
     }
 
@@ -22,32 +27,51 @@ class LoginController extends Controller
      */
     public function login(Request $request)
     {
-        // Validate the input
+        // Validate input
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
         ]);
 
-        // Attempt to authenticate
+        // Attempt authentication
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            // Redirect based on user role
+            // Get authenticated user
             $user = Auth::user();
 
-            if ($user->hasRole('admin')) {
-                return redirect()->intended('/admin/dashboard');
-            } elseif ($user->hasRole('qa_staff') || $user->hasRole('engineering_staff')) {
-                return redirect()->intended('/staff/dashboard');
-            } else {
-                return redirect()->intended('/dashboard');
+            // Check if user is active
+            if (! $user->is_active) {
+                Auth::logout();
+                throw ValidationException::withMessages([
+                    'email' => 'Your account has been deactivated. Please contact administrator.',
+                ]);
             }
+
+            // Redirect based on role
+            return $this->redirectBasedOnRole($user);
         }
 
         // Authentication failed
         throw ValidationException::withMessages([
-            'email' => __('These credentials do not match our records.'),
+            'email' => __('auth.failed'),
         ]);
+    }
+
+    /**
+     * Redirect user based on their role
+     */
+    protected function redirectBasedOnRole($user)
+    {
+        if ($user->hasRole('admin')) {
+            return redirect()->intended(route('admin.dashboard'));
+        }
+
+        if ($user->hasRole(['qa_staff', 'engineering_staff'])) {
+            return redirect()->intended(route('staff.dashboard'));
+        }
+
+        return redirect()->intended(route('dashboard'));
     }
 
     /**
@@ -60,6 +84,6 @@ class LoginController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/login');
+        return redirect()->route('login');
     }
 }

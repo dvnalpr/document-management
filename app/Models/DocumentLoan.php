@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\LoanStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +28,7 @@ class DocumentLoan extends Model
         'loan_date' => 'date',
         'due_date' => 'date',
         'return_date' => 'date',
+        'status' => LoanStatus::class,
     ];
 
     /**

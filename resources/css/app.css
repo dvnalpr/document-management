@@ -1,11 +1,38 @@
-@import 'tailwindcss';
-
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap');
+@import "tailwindcss";
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    /* Set Font Default ke Ubuntu */
+    --font-sans: 'Ubuntu', sans-serif;
+
+    /* Define Custom Colors sesuai request */
+    --color-primary: #1d3557;
+    --color-dark: #170c0d;
+
+    --animate-float: float 6s ease-in-out infinite;
+    --animate-float-delayed: float 8s ease-in-out infinite;
+    --animate-fade-up: fadeUp 0.8s ease-out forwards;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+}
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Custom Utilities untuk Input agar mirip mockup (Soft gray background) */
+@layer utilities {
+    .input-field {
+        @apply w-full px-4 py-3 rounded-lg bg-gray-100 border border-transparent focus:border-transparent focus:ring-0 transition duration-200 outline-none placeholder-gray-400;
+    }
 }
