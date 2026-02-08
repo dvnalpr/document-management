@@ -2,27 +2,37 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Document;
+use App\Models\DocumentLoan;
+
 class DashboardController extends Controller
 {
     public function index()
     {
-        // Data Dummy untuk Mockup
         $stats = [
-            ['label' => 'Total all docs', 'value' => '2,500'],
-            ['label' => 'Total QA docs', 'value' => '1,000'],
-            ['label' => 'Total Engineering docs', 'value' => '1,000'],
-            ['label' => 'Total sertificate docs', 'value' => '500'],
-            ['label' => 'Total docs borrowed', 'value' => '624'],
+            [
+                'label' => 'Total all docs',
+                'value' => Document::count(),
+            ],
+            [
+                'label' => 'Total QA docs',
+                'value' => Document::whereHas('category', fn ($q) => $q->where('code', 'QUALITY'))->count(),
+            ],
+            [
+                'label' => 'Total Engineering docs',
+                'value' => Document::whereHas('category', fn ($q) => $q->where('code', 'ENGINEERING'))->count(),
+            ],
+            [
+                'label' => 'Total certificate docs',
+                'value' => Document::whereHas('category', fn ($q) => $q->where('code', 'CERTIFICATION'))->count(),
+            ],
+            [
+                'label' => 'Total loan requests',
+                'value' => DocumentLoan::where('status', 'Accepted')->count(),
+            ],
         ];
 
-        $recentDocs = [
-            ['name' => 'Safety Guideline.pdf', 'version' => 'v1.0', 'date' => '12/12/2025', 'category' => 'QA', 'user' => 'Jonas McDuff'],
-            ['name' => 'Safety Guideline.pdf', 'version' => 'v1.0', 'date' => '12/12/2025', 'category' => 'ME', 'user' => 'Jonas McDuff'],
-            ['name' => 'Safety Guideline.pdf', 'version' => 'v2.0', 'date' => '12/12/2025', 'category' => 'QA', 'user' => 'Jonas McDuff'],
-            ['name' => 'Safety Guideline.pdf', 'version' => 'v2.0', 'date' => '12/12/2025', 'category' => 'QA', 'user' => 'Jonas McDuff'],
-            ['name' => 'Safety Guideline.pdf', 'version' => 'v1.0', 'date' => '12/12/2025', 'category' => 'QA', 'user' => 'Jonas McDuff'],
-            ['name' => 'Safety Guideline.pdf', 'version' => 'v3.0', 'date' => '12/12/2025', 'category' => 'QA', 'user' => 'Jonas McDuff'],
-        ];
+        $recentDocs = Document::with(['category', 'uploader'])->latest()->take(10)->get();
 
         return view('dashboard.index', compact('stats', 'recentDocs'));
     }

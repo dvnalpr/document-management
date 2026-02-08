@@ -14,15 +14,11 @@ return new class extends Migration
         Schema::create('document_versions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('document_id')->constrained('documents')->onDelete('cascade');
-            $table->string('version_number', 20);
+            $table->foreignId('updated_by')->constrained('users');
+            $table->string('version');
             $table->string('file_path');
-            $table->string('file_name');
-            $table->text('change_notes')->nullable();
-            $table->foreignId('uploaded_by')->constrained('users')->onDelete('cascade');
+            $table->text('change_note')->nullable();
             $table->timestamps();
-
-            // Index untuk query performance
-            $table->index(['document_id', 'version_number']);
         });
     }
 

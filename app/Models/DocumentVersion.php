@@ -2,35 +2,25 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class DocumentVersion extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'document_id',
-        'version_number',
+        'version',
         'file_path',
-        'file_name',
-        'change_notes',
-        'uploaded_by',
+        'change_note',
+        'updated_by',
     ];
 
-    /**
-     * Get the document this version belongs to
-     */
     public function document()
     {
         return $this->belongsTo(Document::class);
     }
 
-    /**
-     * Get the user who uploaded this version
-     */
-    public function uploader()
+    public function updater()
     {
-        return $this->belongsTo(User::class, 'uploaded_by');
+        return $this->belongsTo(User::class, 'updated_by');
     }
 }

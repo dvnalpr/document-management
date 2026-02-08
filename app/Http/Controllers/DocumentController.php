@@ -2,283 +2,228 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Division;
 use App\Models\Document;
 use App\Models\DocumentCategory;
+use App\Models\DocumentVersion;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DocumentController extends Controller
 {
+    /**
+     * Helper Private untuk mapping Divisi ke Kategori
+     */
+    private function getCategoryByDivision($divisionId)
+    {
+        // 1. Ambil Code Kategori Certification
+        $certCat = DocumentCategory::where('code', 'CERTIFICATION')->first();
+
+        // 2. Ambil Divisi Target
+        $division = Division::find($divisionId);
+
+        if (! $division) {
+            // Fallback jika divisi tidak valid
+            return $certCat->id;
+        }
+
+        // 3. Logic Mapping (Sesuaikan string ini dengan nama Divisi di Database Anda)
+        // Gunakan str_contains atau exact match sesuai kebutuhan
+        $divName = strtoupper($division->name);
+
+        if (str_contains($divName, 'QA') || str_contains($divName, 'QUALITY')) {
+            return DocumentCategory::where('code', 'QUALITY')->first()->id;
+        }
+
+        if (str_contains($divName, 'ENGINEERING')) {
+            return DocumentCategory::where('code', 'ENGINEERING')->first()->id;
+        }
+
+        // Default jika tidak match (misal HRD), kembalikan null atau default category
+        // Disini saya defaultkan ke Certification atau bisa buat kategori 'General'
+        return $certCat->id;
+    }
+
     public function index(Request $request)
     {
-        // Data Dummy Statistik (Sama seperti dashboard)
+        $user = Auth::user();
+        $categories = DocumentCategory::all();
+        $division = Division::all(); // Untuk dropdown Admin
+
+        $query = Document::with(['category', 'division', 'uploader']);
+
+        // --- FIX BUG AKSES ---
+        // Masalah sebelumnya: Jika user punya division_id NULL (misal salah setup), query menjadi bocor.
+        // Kita perketat logikanya.
+
+        if (! $user->hasRole('Admin')) {
+            $query->where(function ($q) use ($user) {
+
+                // Kondisi 1: Dokumen milik divisi user
+                // Gunakan where strict. Jika user->division_id null, kita pakai -1 agar tidak match apapun.
+                $userDivId = $user->division_id ?? -1;
+                $q->where('division_id', $userDivId);
+
+                // Kondisi 2: ATAU Dokumen Sertifikasi (Public)
+                $q->orWhereHas('category', function ($c) {
+                    $c->where('code', 'CERTIFICATION');
+                });
+            });
+        }
+        // ---------------------
+
+        if ($request->has('search')) {
+            $query->where('title', 'like', "%{$request->search}%");
+        }
+
+        // Filter kategori (tetap dipertahankan untuk dropdown filter di atas tabel)
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        $documents = $query->latest()->paginate($request->input('per_page', 10))->withQueryString();
+
+        // Stats Logic
         $stats = [
-            ['label' => 'Total all docs', 'value' => '2,500'],
-            ['label' => 'Total QA docs', 'value' => '1,000'],
-            ['label' => 'Total Engineering docs', 'value' => '1,000'],
-            ['label' => 'Total sertificate docs', 'value' => '500'],
-            ['label' => 'Total docs borrowed', 'value' => '624'],
+            ['label' => 'Total Docs', 'value' => Document::count()],
+            ['label' => 'My Division', 'value' => $user->division_id ? Document::where('division_id', $user->division_id)->count() : 0],
+            ['label' => 'Certification', 'value' => Document::whereHas('category', fn ($q) => $q->where('code', 'CERTIFICATION'))->count()],
         ];
 
-        // Data Dummy Documents
-        $documents = [
-            [
-                'id' => 1,
-                'name' => 'Safety Guideline.pdf',
-                'version' => 'v1.0',
-                'date' => '12/12/2025',
-                'category' => 'QA',
-                'user' => 'Jonas McDuff',
-            ],
-            [
-                'id' => 2,
-                'name' => 'Machine Maintenance.pdf',
-                'version' => 'v1.0',
-                'date' => '12/12/2025',
-                'category' => 'ME',
-                'user' => 'Jonas McDuff',
-            ],
-            [
-                'id' => 3,
-                'name' => 'ISO 9001 Manual.pdf',
-                'version' => 'v2.0',
-                'date' => '12/12/2025',
-                'category' => 'QA',
-                'user' => 'Jonas McDuff',
-            ],
-            // Tambahkan data lain sesuai kebutuhan
-        ];
-
-        return view('documents.index', compact('stats', 'documents'));
-
-        // $this->authorize('viewAny', Document::class);
-
-        // $query = Document::with(['category', 'division', 'uploader'])
-        //     ->accessibleBy(auth()->user());
-
-        // // Search
-        // if ($request->filled('search')) {
-        //     $query->search($request->search);
-        // }
-
-        // // Filter by category
-        // if ($request->filled('category')) {
-        //     $query->byCategory($request->category);
-        // }
-
-        // // Filter by division
-        // if ($request->filled('division')) {
-        //     $query->byDivision($request->division);
-        // }
-
-        // // Filter by date range
-        // if ($request->filled('from_date')) {
-        //     $query->whereDate('created_at', '>=', $request->from_date);
-        // }
-
-        // if ($request->filled('to_date')) {
-        //     $query->whereDate('created_at', '<=', $request->to_date);
-        // }
-
-        // // Sort
-        // $sortBy = $request->get('sort', 'created_at');
-        // $sortOrder = $request->get('order', 'desc');
-        // $query->orderBy($sortBy, $sortOrder);
-
-        // $documents = $query->paginate(15);
-
-        // // For filters
-        // $categories = DocumentCategory::all();
-        // $divisions = Division::all();
-
-        // return view('documents.index', compact('documents', 'categories', 'divisions'));
+        return view('documents.index', compact('documents', 'stats', 'categories', 'division'));
     }
 
-    /**
-     * Show the form for creating a new document
-     */
-    public function create()
+    public function store(Request $request)
     {
-        // $this->authorize('create', Document::class);
+        $request->validate([
+            'title' => 'required|string|max:255',
+            // category_id tidak lagi wajib dari input, karena otomatis
+            'document_file' => 'required|file|mimes:pdf,doc,docx|max:10240',
+            'division_id' => Auth::user()->hasRole('Admin') ? 'required|exists:divisions,id' : 'nullable',
+        ]);
 
-        // $categories = DocumentCategory::all();
-        // $divisions = Division::all();
+        DB::transaction(function () use ($request) {
+            $path = $request->file('document_file')->store('documents/originals', 'public');
 
-        return view('documents.create');
+            // 1. Tentukan Divisi
+            // Jika Admin, pakai input. Jika Staff, pakai divisi user sendiri.
+            $targetDivisionId = $request->division_id ?? Auth::user()->division_id;
+
+            // 2. Tentukan Kategori Otomatis
+            if ($request->has('is_certification')) {
+                // Jika dicentang, cari kategori CERTIFICATION
+                $categoryId = DocumentCategory::where('code', 'CERTIFICATION')->first()->id;
+            } else {
+                // Jika tidak, cari kategori berdasarkan Divisi Target
+                $categoryId = $this->getCategoryByDivision($targetDivisionId);
+            }
+
+            $document = Document::create([
+                'title' => $request->title,
+                'category_id' => $categoryId,       // <--- Hasil logic otomatis
+                'division_id' => $targetDivisionId, // <--- Penting untuk filtering
+                'uploaded_by' => Auth::id(),
+                'file_path' => $path,
+                'current_version' => '1.0',
+            ]);
+
+            AuditLog::create([
+                'user_id' => Auth::id(),
+                'activity' => 'Create Document',
+                'target' => $document->title,
+                'target_type' => 'Document',
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Document uploaded successfully!');
     }
 
-    /**
-     * Store a newly created document
-     */
-    // public function store(Request $request)
-    // {
-    //     $this->authorize('create', Document::class);
+    public function update(Request $request, Document $document)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'change_type' => 'required|in:major,minor',
+            'document_file' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
+        ]);
 
-    //     $validated = $request->validate([
-    //         'title' => 'required|string|max:255',
-    //         'description' => 'nullable|string',
-    //         'category_id' => 'required|exists:document_categories,id',
-    //         'division_id' => 'nullable|exists:divisions,id',
-    //         'file' => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
-    //     ]);
+        DB::transaction(function () use ($request, $document) {
 
-    //     // Handle file upload
-    //     $file = $request->file('file');
-    //     $fileName = time().'_'.Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)).'.'.$file->getClientOriginalExtension();
-    //     $filePath = $file->storeAs('documents/originals', $fileName, 'private');
+            // Simpan Versi Lama
+            DocumentVersion::create([
+                'document_id' => $document->id,
+                'version' => $document->current_version,
+                'file_path' => $document->file_path,
+                'change_note' => $request->change_note ?? 'Metadata update',
+                'updated_by' => Auth::id(),
+            ]);
 
-    //     // Create document
-    //     $document = Document::create([
-    //         'title' => $validated['title'],
-    //         'description' => $validated['description'],
-    //         'category_id' => $validated['category_id'],
-    //         'division_id' => $validated['division_id'] ?? auth()->user()->division_id,
-    //         'current_version' => '1.0',
-    //         'file_path' => $filePath,
-    //         'file_name' => $file->getClientOriginalName(),
-    //         'file_size' => $file->getSize(),
-    //         'mime_type' => $file->getMimeType(),
-    //         'uploaded_by' => auth()->id(),
-    //     ]);
+            // Hitung Versi Baru
+            $oldVersion = (float) $document->current_version;
+            $newVersion = $request->change_type === 'major'
+                ? floor($oldVersion) + 1 .'.0'
+                : $oldVersion + 0.1;
 
-    //     // Log activity (optional)
-    //     // AuditLog::create([...]);
+            $newPath = $document->file_path;
+            if ($request->hasFile('document_file')) {
+                $newPath = $request->file('document_file')->store('documents/versions', 'public');
+            }
 
-    //     return redirect()->route('documents.show', $document)
-    //         ->with('success', 'Document uploaded successfully!');
-    // }
+            // Logic Update Kategori (Jika User mengubah checkbox)
+            $newCategoryId = $document->category_id;
 
-    // /**
-    //  * Display the specified document
-    //  */
-    // public function show(Document $document)
-    // {
-    //     $this->authorize('view', $document);
+            // Cek apakah user mengubah status sertifikasi di edit modal
+            if ($request->has('is_certification')) {
+                $newCategoryId = DocumentCategory::where('code', 'CERTIFICATION')->first()->id;
+            } else {
+                // Jika di-uncheck, kembalikan ke kategori sesuai divisi dokumen tersebut
+                $newCategoryId = $this->getCategoryByDivision($document->division_id);
+            }
 
-    //     $document->load(['category', 'division', 'uploader', 'versions', 'loans']);
+            $document->update([
+                'title' => $request->title,
+                'category_id' => $newCategoryId, // Update kategori jika berubah
+                'current_version' => (string) $newVersion,
+                'file_path' => $newPath,
+            ]);
 
-    //     return view('documents.show', compact('document'));
-    // }
+            AuditLog::create([
+                'user_id' => Auth::id(),
+                'activity' => 'Update Document to v'.$newVersion,
+                'target' => $document->title,
+                'target_type' => 'Document',
+            ]);
+        });
 
-    // /**
-    //  * Show the form for editing the document
-    //  */
-    // public function edit(Document $document)
-    // {
-    //     $this->authorize('update', $document);
+        return redirect()->back()->with('success', 'Document updated successfully!');
+    }
 
-    //     $categories = DocumentCategory::all();
-    //     $divisions = Division::all();
+    // ... Method show & destroy tetap sama ...
+    public function show(Document $document)
+    {
+        $versions = $document->versions()->latest()->get();
 
-    //     return view('documents.edit', compact('document', 'categories', 'divisions'));
-    // }
+        return view('documents.show', compact('document', 'versions'));
+    }
 
-    // /**
-    //  * Update the specified document
-    //  */
-    // public function update(Request $request, Document $document)
-    // {
-    //     $this->authorize('update', $document);
+    public function destroy(Document $document)
+    {
+        $pendingLoans = \App\Models\DocumentLoan::where('document_id', $document->id)
+            ->where('status', 'Pending')->get();
 
-    //     $validated = $request->validate([
-    //         'title' => 'required|string|max:255',
-    //         'description' => 'nullable|string',
-    //         'category_id' => 'required|exists:document_categories,id',
-    //         'division_id' => 'nullable|exists:divisions,id',
-    //         'file' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
-    //         'change_notes' => 'required_with:file|string',
-    //     ]);
+        foreach ($pendingLoans as $loan) {
+            $loan->update(['status' => 'Canceled', 'admin_note' => 'System: Document deleted.']);
+        }
+        $document->delete();
 
-    //     // Update metadata
-    //     $document->update([
-    //         'title' => $validated['title'],
-    //         'description' => $validated['description'],
-    //         'category_id' => $validated['category_id'],
-    //         'division_id' => $validated['division_id'],
-    //     ]);
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'activity' => 'Delete Document',
+            'target' => $document->title,
+            'target_type' => 'Document',
+        ]);
 
-    //     // If new file uploaded, create new version
-    //     if ($request->hasFile('file')) {
-    //         $this->createNewVersion($document, $request->file('file'), $validated['change_notes']);
-    //     }
-
-    //     return redirect()->route('documents.show', $document)
-    //         ->with('success', 'Document updated successfully!');
-    // }
-
-    // /**
-    //  * Remove the specified document
-    //  */
-    // public function destroy(Document $document)
-    // {
-    //     $this->authorize('delete', $document);
-
-    //     // Soft delete
-    //     $document->delete();
-
-    //     return redirect()->route('documents.index')
-    //         ->with('success', 'Document deleted successfully!');
-    // }
-
-    // /**
-    //  * Download document
-    //  */
-    // public function download(Document $document)
-    // {
-    //     $this->authorize('download', $document);
-
-    //     // Log download (optional)
-    //     // AuditLog::create([...]);
-
-    //     return Storage::disk('private')->download($document->file_path, $document->file_name);
-    // }
-
-    // /**
-    //  * Preview document
-    //  */
-    // public function preview(Document $document)
-    // {
-    //     $this->authorize('view', $document);
-
-    //     if (! $document->isPreviewable()) {
-    //         abort(400, 'This document type cannot be previewed');
-    //     }
-
-    //     return response()->file(Storage::disk('private')->path($document->file_path));
-    // }
-
-    // /**
-    //  * Create new version
-    //  */
-    // private function createNewVersion(Document $document, $file, $changeNotes)
-    // {
-    //     // Save current version to history
-    //     $document->versions()->create([
-    //         'version_number' => $document->current_version,
-    //         'file_path' => $document->file_path,
-    //         'file_name' => $document->file_name,
-    //         'change_notes' => $changeNotes,
-    //         'uploaded_by' => auth()->id(),
-    //     ]);
-
-    //     // Increment version number
-    //     $versionParts = explode('.', $document->current_version);
-    //     $versionParts[1]++; // Minor version
-    //     $newVersion = implode('.', $versionParts);
-
-    //     // Upload new file
-    //     $fileName = time().'_'.Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)).'.'.$file->getClientOriginalExtension();
-    //     $filePath = $file->storeAs('documents/originals', $fileName, 'private');
-
-    //     // Update document
-    //     $document->update([
-    //         'current_version' => $newVersion,
-    //         'file_path' => $filePath,
-    //         'file_name' => $file->getClientOriginalName(),
-    //         'file_size' => $file->getSize(),
-    //         'mime_type' => $file->getMimeType(),
-    //     ]);
-    // }
+        return redirect()->route('documents.index')->with('success', 'Document deleted.');
+    }
 }

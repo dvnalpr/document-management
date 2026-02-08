@@ -11,11 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('document_categories', function (Blueprint $table) {
+        Schema::create('audit_logs', function (Blueprint $table) {
             $table->id();
-            $table->string('name', 100);
-            $table->string('code', 50)->unique();
-            $table->text('description')->nullable();
+            $table->foreignId('user_id')->constrained('users')->nullOnDelete();
+            $table->string('activity');
+            $table->string('target');
+            $table->string('target_type');
             $table->timestamps();
         });
     }
@@ -25,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('document_categories');
+        Schema::dropIfExists('audit_logs');
     }
 };

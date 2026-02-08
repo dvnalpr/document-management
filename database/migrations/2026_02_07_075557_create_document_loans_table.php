@@ -1,0 +1,42 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('document_loans', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('document_id')->constrained('documents')->onDelete('cascade');
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+
+            $table->string('token', 10)->nullable()->unique();
+            $table->string('duration');
+
+            $table->dateTime('request_date');
+            $table->dateTime('approved_at')->nullable();
+            $table->dateTime('returned_at')->nullable();
+
+            $table->string('status')->default('Pending');
+
+            $table->text('note')->nullable();
+            $table->text('admin_note')->nullable();
+
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('document_loans');
+    }
+};

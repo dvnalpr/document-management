@@ -2,74 +2,107 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
+use App\Models\Division;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // 1. Data Dummy Statistik
+        $divisions = Division::all();
+
+        $query = User::with(['division', 'roles']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('division_id')) {
+            $query->where('division_id', $request->division_id);
+        }
+
+        $perPage = $request->input('per_page', 10);
+        $users = $query->latest()->paginate($perPage)->withQueryString();
+
+        // Stats
         $stats = [
-            ['label' => 'Total all user', 'value' => '2,500'],
-            ['label' => 'Total active user', 'value' => '1,500'],
-            ['label' => 'Total deactived user', 'value' => '1,000'],
+            ['label' => 'Total Users', 'value' => User::count()],
+            ['label' => 'Active Users', 'value' => User::where('is_active', true)->count()],
+            ['label' => 'Deactivated', 'value' => User::where('is_active', false)->count()],
         ];
 
-        // 2. Data Dummy Users
-        $users = [
-            [
-                'id' => 1,
-                'name' => 'Bradley William',
-                'email' => 'bradleywill@proton.me',
-                'date_added' => '12/12/2025',
-                'department' => 'ME',
-                'status' => 'Active',
-            ],
-            [
-                'id' => 2,
-                'name' => 'Bradley William',
-                'email' => 'bradleywill@proton.me',
-                'date_added' => '12/12/2025',
-                'department' => 'QA',
-                'status' => 'Active',
-            ],
-            [
-                'id' => 3,
-                'name' => 'Bradley William',
-                'email' => 'bradleywill@proton.me',
-                'date_added' => '12/12/2025',
-                'department' => 'ME',
-                'status' => 'Active',
-            ],
-            [
-                'id' => 4,
-                'name' => 'Bradley William',
-                'email' => 'bradleywill@proton.me',
-                'date_added' => '12/12/2025',
-                'department' => 'QA',
-                'status' => 'Active',
-            ],
-            [
-                'id' => 5,
-                'name' => 'Bradley William',
-                'email' => 'bradleywill@proton.me',
-                'date_added' => '12/12/2025',
-                'department' => 'QA',
-                'status' => 'Inactive', // Contoh inactive
-            ],
-            [
-                'id' => 6,
-                'name' => 'Bradley William',
-                'email' => 'bradleywill@proton.me',
-                'date_added' => '12/12/2025',
-                'department' => 'QA',
-                'status' => 'Active',
-            ],
-        ];
-
-        return view('users.index', compact('stats', 'users'));
+        return view('users.index', compact('users', 'stats', 'divisions', 'perPage'));
     }
 
-    public function create()
+    public function store(Request $request)
     {
-        return view('users.create');
+        $divisionId = ($request->role === 'Admin') ? null : $request->division_id;
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users',
+            'password' => 'required|min:6',
+            'division_id' => 'required|exists:divisions,id',
+            'role' => 'required',
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'division_id' => $request->division_id,
+            'is_active' => true,
+        ]);
+
+        $user->assignRole($request->role);
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'activity' => 'Create User',
+            'target' => $user->name,
+            'target_type' => 'User',
+        ]);
+
+        return redirect()->back()->with('success', 'User created successfully');
+    }
+
+    public function update(Request $request, User $user)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,'.$user->id,
+            'division_id' => 'required|exists:divisions,id', // Validasi ID
+        ]);
+
+        $data = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'is_active' => $request->status === 'Active',
+            'division_id' => $request->division_id, // Langsung simpan ID
+        ];
+
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($request->password);
+        }
+
+        $user->update($data);
+        $user->syncRoles([$request->role]);
+
+        return redirect()->back()->with('success', 'User updated successfully');
+    }
+
+    public function destroy(User $user)
+    {
+        $user->delete();
+
+        return redirect()->back()->with('success', 'User deleted');
     }
 }
