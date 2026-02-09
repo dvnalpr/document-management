@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="max-w-5xl mx-auto space-y-8" x-data="{ 
-                isEditModalOpen: {{ $errors->has('title') || $errors->has('document_file') ? 'true' : 'false' }}, 
-                isBorrowModalOpen: {{ $errors->has('note') || $errors->has('duration') ? 'true' : 'false' }} 
-             }">
+    <div class="max-w-5xl mx-auto space-y-8" x-data="{
+        isEditModalOpen: {{ $errors->has('title') || $errors->has('document_file') ? 'true' : 'false' }},
+        isBorrowModalOpen: {{ $errors->has('note') || $errors->has('duration') ? 'true' : 'false' }}
+    }">
 
         <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div>
@@ -107,14 +107,15 @@
         </div>
 
         <x-drawer name="isEditModalOpen" title="Update Documents">
-            <form action="{{ route('documents.update', $document->id) }}" method="POST" enctype="multipart/form-data"
+            <form :action="'{{ url('documents') }}/' + editingDocument?.id" method="POST" enctype="multipart/form-data"
                 id="editDocForm" class="space-y-6">
-                @csrf
-                @method('PUT')
+                @csrf @method('PUT')
 
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-dark">Document name</label>
-                    <input type="text" name="title" value="{{ $document->title }}"
+                    <label class="block text-sm font-bold text-dark">
+                        Document name <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="title" :value="editingDocument?.title"
                         class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition"
                         required>
                 </div>
@@ -124,23 +125,27 @@
                     <label class="block text-sm font-bold text-dark">Upload New File</label>
                     <div
                         class="relative border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 transition p-6 text-center group">
-                        <input type="file" name="document_file" x-ref="editInput"
-                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="
-                                    const file = $el.files[0];
-                                    if(file){
-                                        fileName = file.name;
-                                        fileSize = (file.size < 1024 * 1024) 
-                                            ? (file.size / 1024).toFixed(2) + ' KB' 
-                                            : (file.size / (1024 * 1024)).toFixed(2) + ' MB';
-                                    }">
+
+                        <input type="file" name="document_file"
+                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            @change="
+                                                                    const file = $el.files[0];
+                                                                    if(file){
+                                                                        fileName = file.name;
+                                                                        fileSize = (file.size < 1024 * 1024) 
+                                                                            ? (file.size / 1024).toFixed(2) + ' KB' 
+                                                                            : (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+                                                                    }
+                                                                ">
 
                         <div x-show="!fileName">
                             <p class="text-sm text-gray-500 mb-4">Upload new version here.</p>
                             <button type="button"
                                 class="inline-flex items-center px-4 py-2 bg-white border border-dashed border-gray-400 rounded-md text-sm font-medium text-dark shadow-sm group-hover:border-primary group-hover:text-primary transition">
-                                Choose File
+                                Add document
                             </button>
                         </div>
+
                         <div x-show="fileName" class="flex flex-col items-center justify-center" style="display: none;">
                             <div
                                 class="w-12 h-12 bg-blue-100 text-primary rounded-full flex items-center justify-center mb-2">
@@ -152,21 +157,36 @@
                             </div>
                             <p class="font-bold text-sm text-dark break-all" x-text="fileName"></p>
                             <p class="text-xs text-gray-500 mt-1" x-text="fileSize"></p>
+                            <p class="text-xs text-primary mt-3 font-medium">Click to change file</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-dark">Category</label>
+                    <div class="flex items-center gap-3 p-4 border border-gray-200 rounded-lg bg-gray-50/50">
+                        <div class="flex items-center h-5">
+                            <input id="is_certification_edit" name="is_certification" type="checkbox" value="1"
+                                :checked="editingDocument?.category?.code === 'CERTIFICATION'"
+                                class="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer">
+                        </div>
+                        <div class="ml-2 text-sm">
+                            <label for="is_certification_edit" class="font-bold text-dark cursor-pointer">
+                                Is this a Certification Document?
+                            </label>
+                            <p class="text-xs text-gray-500">Check to make this document public as Certification.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-bold text-dark">
+                        Change type <span class="text-red-500">*</span>
+                    </label>
                     <div class="relative">
-                        <select name="category_id"
+                        <select name="change_type"
                             class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition appearance-none bg-white text-dark">
-                            <option value="1" {{ optional($document->category)->code == 'QUALITY' ? 'selected' : '' }}>Quality
-                                Assurance</option>
-                            <option value="2" {{ optional($document->category)->code == 'ENGINEERING' ? 'selected' : '' }}>
-                                Manufacture Engineering</option>
-                            <option value="3" {{ optional($document->category)->code == 'CERTIFICATION' ? 'selected' : '' }}>
-                                Certification</option>
+                            <option value="major">Major (1.0 -> 2.0)</option>
+                            <option value="minor">Minor (1.0 -> 1.1)</option>
                         </select>
                         <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,33 +198,22 @@
                 </div>
 
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-dark">Change type</label>
-                    <div class="relative">
-                        <select name="change_type"
-                            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition appearance-none bg-white text-dark">
-                            <option value="minor">Minor ({{ $document->current_version }} ->
-                                {{ $document->current_version + 0.1 }})</option>
-                            <option value="major">Major ({{ floor($document->current_version) + 1 }}.0)</option>
-                        </select>
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
-                                </path>
-                            </svg></div>
-                    </div>
-                </div>
-                <div class="space-y-2">
                     <label class="block text-sm font-bold text-dark">Change note</label>
-                    <textarea name="change_note" rows="3"
+                    <textarea name="change_note" rows="3" placeholder="Enter reason for update..."
                         class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition"></textarea>
                 </div>
             </form>
             <x-slot:footer>
-                <button @click="isEditModalOpen = false" type="button"
-                    class="px-6 py-2.5 rounded-lg bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition">Cancel</button>
-                <button type="submit" form="editDocForm"
-                    class="px-6 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 shadow-md transition transform active:scale-95">Update
-                    Document</button>
+                <div class="flex items-center justify-end gap-3 w-full">
+                    <button @click="isEditModalOpen = false" type="button"
+                        class="px-6 py-2.5 rounded-lg bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" form="editDocForm"
+                        class="px-6 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 shadow-md transition transform active:scale-95">
+                        Update Document
+                    </button>
+                </div>
             </x-slot:footer>
         </x-drawer>
 
@@ -242,14 +251,18 @@
                             </svg>
                         </div>
                     </div>
-                    @error('duration') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    @error('duration')
+                        <span class="text-red-500 text-xs">{{ $message }}</span>
+                    @enderror
                 </div>
 
                 <div class="space-y-2">
                     <label class="block text-sm font-bold text-dark">Note</label>
                     <textarea name="note" rows="4" placeholder="Reason for borrowing..." required
                         class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition"></textarea>
-                    @error('note') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    @error('note')
+                        <span class="text-red-500 text-xs">{{ $message }}</span>
+                    @enderror
                 </div>
             </form>
             <x-slot:footer>

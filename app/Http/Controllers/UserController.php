@@ -54,11 +54,13 @@ class UserController extends Controller
             'role' => 'required',
         ]);
 
+        $finalDivisionId = ($request->role === 'Admin') ? null : $request->division_id;
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'division_id' => $request->division_id,
+            'division_id' => $finalDivisionId,
             'is_active' => true,
         ]);
 
@@ -79,14 +81,17 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,'.$user->id,
-            'division_id' => 'required|exists:divisions,id', // Validasi ID
+            'division_id' => 'required|exists:divisions,id',
+            'role' => 'required',
         ]);
+
+        $finalDivisionId = ($request->role === 'Admin') ? null : $request->division_id;
 
         $data = [
             'name' => $request->name,
             'email' => $request->email,
             'is_active' => $request->status === 'Active',
-            'division_id' => $request->division_id, // Langsung simpan ID
+            'division_id' => $finalDivisionId,
         ];
 
         if ($request->filled('password')) {

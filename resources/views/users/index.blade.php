@@ -156,7 +156,7 @@
                                             class="px-3 py-1 rounded-full text-xs font-bold border border-purple-200 text-purple-700 bg-purple-50">HR</span>
                                     @else
                                         <span
-                                            class="px-3 py-1 rounded-full text-xs font-bold border border-gray-200 text-gray-600 bg-gray-50">{{ $user->division->name ?? 'No Dept' }}</span>
+                                            class="px-3 py-1 rounded-full text-xs font-bold border border-gray-200 text-gray-600 bg-gray-50">{{ $user->division->name ?? 'No Division' }}</span>
                                     @endif
                                 </td>
                                 <td class="p-4">
@@ -281,72 +281,136 @@
         <x-drawer name="isAddUserModalOpen" title="Add User">
             <form action="{{ route('users.store') }}" method="POST" id="addUserForm" class="space-y-6">
                 @csrf
+
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-dark">Username</label>
-                    <input type="text" name="name"
-                        class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition"
+                    <label class="block text-sm font-bold text-dark">
+                        Username <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="name" value="{{ old('name') }}"
+                        class="w-full px-4 py-2.5 rounded-lg border focus:ring-1 focus:ring-primary focus:border-primary outline-none transition {{ $errors->has('name') ? 'border-red-500' : 'border-gray-300' }}"
                         required>
+                    @error('name')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
+
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-2">
-                        <label class="block text-sm font-bold text-dark">Division</label>
+                        <label class="block text-sm font-bold text-dark">
+                            Division <span class="text-red-500">*</span>
+                        </label>
                         <div class="relative">
                             <select name="division_id" required
-                                class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition appearance-none bg-white text-dark">
+                                class="w-full px-4 py-2.5 rounded-lg border focus:ring-1 focus:ring-primary focus:border-primary outline-none transition appearance-none bg-white text-dark {{ $errors->has('division_id') ? 'border-red-500' : 'border-gray-300' }}">
                                 <option value="" disabled selected>Select Division</option>
                                 @foreach ($divisions as $division)
-                                    <option value="{{ $division->id }}">{{ $division->name }}</option>
+                                    <option value="{{ $division->id }}"
+                                        {{ old('division_id') == $division->id ? 'selected' : '' }}>
+                                        {{ $division->name }}
+                                    </option>
                                 @endforeach
                             </select>
+                            <div
+                                class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
                         </div>
+                        @error('division_id')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
+
                     <div class="space-y-2">
-                        <label class="block text-sm font-bold text-dark">Role</label>
-                        <select name="role"
-                            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition bg-white text-dark">
-                            <option value="Staff">Staff</option>
-                            <option value="Manager">Manager</option>
-                            <option value="Admin">Admin</option>
-                        </select>
+                        <label class="block text-sm font-bold text-dark">
+                            Role <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <select name="role" required
+                                class="w-full px-4 py-2.5 rounded-lg border focus:ring-1 focus:ring-primary focus:border-primary outline-none transition appearance-none bg-white text-dark {{ $errors->has('role') ? 'border-red-500' : 'border-gray-300' }}">
+                                <option value="" disabled selected>Select Role</option>
+                                <option value="Staff" {{ old('role') == 'Staff' ? 'selected' : '' }}>Staff</option>
+                                <option value="Manager" {{ old('role') == 'Manager' ? 'selected' : '' }}>Manager</option>
+                                <option value="Admin" {{ old('role') == 'Admin' ? 'selected' : '' }}>Admin</option>
+                            </select>
+                            <div
+                                class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        @error('role')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
+
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-dark">Email</label>
-                    <input type="email" name="email"
-                        class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition"
+                    <label class="block text-sm font-bold text-dark">
+                        Email <span class="text-red-500">*</span>
+                    </label>
+                    <input type="email" name="email" value="{{ old('email') }}"
+                        class="w-full px-4 py-2.5 rounded-lg border focus:ring-1 focus:ring-primary focus:border-primary outline-none transition {{ $errors->has('email') ? 'border-red-500' : 'border-gray-300' }}"
                         required>
+                    @error('email')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
-                <div class="space-y-2">
-                    <label class="block text-sm font-bold text-dark">Password</label>
-                    <input type="password" name="password"
-                        class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition"
+
+                <div class="space-y-2" x-data="{ password: '' }">
+                    <label class="block text-sm font-bold text-dark">
+                        Password <span class="text-red-500">*</span>
+                    </label>
+                    <input type="password" name="password" x-model="password"
+                        class="w-full px-4 py-2.5 rounded-lg border focus:ring-1 focus:ring-primary focus:border-primary outline-none transition {{ $errors->has('password') ? 'border-red-500' : 'border-gray-300' }}"
                         required>
+
+                    <p x-show="password.length > 0 && password.length < 6"
+                        class="text-red-500 text-xs mt-1 flex items-center gap-1" style="display: none;">
+                        Password must be at least 6 characters.
+                    </p>
+                    @error('password')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
             </form>
+
             <x-slot:footer>
-                <button @click="isAddUserModalOpen = false"
-                    class="px-6 py-2.5 rounded-lg bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition">Cancel</button>
-                <button onclick="document.getElementById('addUserForm').submit()"
-                    class="px-6 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 shadow-md transition transform active:scale-95">Add
-                    user</button>
+                <div class="flex items-center justify-end gap-3 w-full">
+                    <button @click="isAddUserModalOpen = false"
+                        class="px-6 py-2.5 rounded-lg bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" form="addUserForm"
+                        class="px-6 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 shadow-md transition transform active:scale-95">
+                        Add user
+                    </button>
+                </div>
             </x-slot:footer>
         </x-drawer>
 
         <x-drawer name="isEditUserModalOpen" title="Update User">
             <form :action="'{{ url('users') }}/' + editingUser?.id" method="POST" id="editUserForm" class="space-y-6">
                 @csrf @method('PUT')
+
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-dark">Username</label>
+                    <label class="block text-sm font-bold text-dark">Username <span class="text-red-500">*</span></label>
                     <input type="text" name="name" :value="editingUser?.name"
                         class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition"
                         required>
                 </div>
+
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-2">
-                        <label class="block text-sm font-bold text-dark">Division / Department</label>
+                        <label class="block text-sm font-bold text-dark">Division <span
+                                class="text-red-500">*</span></label>
                         <div class="relative">
                             <select name="division_id" required
-                                class="w-full px-4 py-2.5 rounded-lg border border-gray-300 ...">
+                                class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition appearance-none bg-white text-dark">
                                 @foreach ($divisions as $division)
                                     <option value="{{ $division->id }}"
                                         :selected="editingUser?.division_id == {{ $division->id }}">
@@ -354,29 +418,63 @@
                                     </option>
                                 @endforeach
                             </select>
+                            <div
+                                class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
                         </div>
                     </div>
                     <div class="space-y-2">
-                        <label class="block text-sm font-bold text-dark">Role</label>
-                        <select name="role"
-                            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition bg-white text-dark">
-                            <option value="Staff" :selected="editingUser?.roles?.[0]?.name == 'Staff'">Staff</option>
-                            <option value="Manager" :selected="editingUser?.roles?.[0]?.name == 'Manager'">Manager</option>
-                            <option value="Admin" :selected="editingUser?.roles?.[0]?.name == 'Admin'">Admin</option>
-                        </select>
+                        <label class="block text-sm font-bold text-dark">Role <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <select name="role" required
+                                class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition appearance-none bg-white text-dark">
+                                <option value="Staff" :selected="editingUser?.roles?.[0]?.name == 'Staff'">Staff</option>
+                                <option value="Manager" :selected="editingUser?.roles?.[0]?.name == 'Manager'">Manager
+                                </option>
+                                <option value="Admin" :selected="editingUser?.roles?.[0]?.name == 'Admin'">Admin</option>
+                            </select>
+                            <div
+                                class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-dark">Email</label>
+                    <label class="block text-sm font-bold text-dark">
+                        Email <span class="text-red-500">*</span>
+                    </label>
                     <input type="email" name="email" :value="editingUser?.email"
                         class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition"
                         required>
                 </div>
-                <div class="space-y-2">
-                    <label class="block text-sm font-bold text-dark">Password (Leave blank to keep current)</label>
-                    <input type="password" name="password"
+
+                <div class="space-y-2" x-data="{ newPassword: '' }">
+                    <label class="block text-sm font-bold text-dark">
+                        Password <span class="font-normal text-gray-500 text-xs">(Leave blank to keep current)</span>
+                    </label>
+                    <input type="password" name="password" x-model="newPassword"
                         class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition">
+
+                    <p x-show="newPassword.length > 0 && newPassword.length < 6"
+                        class="text-red-500 text-xs mt-1 flex items-center gap-1" style="display: none;">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                            </path>
+                        </svg>
+                        Password too short (min 6 chars).
+                    </p>
                 </div>
+
                 <div class="space-y-2">
                     <label class="block text-sm font-bold text-dark">Status</label>
                     <div class="flex gap-4 mt-2">
@@ -391,11 +489,18 @@
                     </div>
                 </div>
             </form>
+
             <x-slot:footer>
-                <button @click="isEditUserModalOpen = false"
-                    class="px-6 py-2.5 rounded-lg bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition">Cancel</button>
-                <button onclick="document.getElementById('editUserForm').submit()"
-                    class="px-6 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 shadow-md transition transform active:scale-95">Update</button>
+                <div class="flex items-center justify-end gap-3 w-full">
+                    <button @click="isEditUserModalOpen = false"
+                        class="px-6 py-2.5 rounded-lg bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" form="editUserForm"
+                        class="px-6 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 shadow-md transition transform active:scale-95">
+                        Update
+                    </button>
+                </div>
             </x-slot:footer>
         </x-drawer>
 

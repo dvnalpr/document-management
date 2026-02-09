@@ -290,14 +290,21 @@
                 class="space-y-6">
                 @csrf
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-dark">Document name</label>
-                    <input type="text" name="title" placeholder="Enter here"
-                        class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition"
+                    <label class="block text-sm font-bold text-dark">
+                        Document name <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="title" placeholder="Enter here" value="{{ old('title') }}"
+                        class="w-full px-4 py-2.5 rounded-lg border focus:ring-1 focus:ring-primary focus:border-primary outline-none transition {{ $errors->has('title') ? 'border-red-500' : 'border-gray-300' }}"
                         required>
+                    @error('title')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
                 <div class="space-y-2" x-data="{ fileName: null, fileSize: null }"
                     x-effect="if(!isAddModalOpen){fileName=null; fileSize=null; if($refs.addInput) $refs.addInput.value = '';}">
-                    <label class="block text-sm font-bold text-dark">Upload</label>
+                    <label class="block text-sm font-bold text-dark">
+                        Upload <span class="text-red-500">*</span>
+                    </label>
                     <div
                         class="relative border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 transition p-6 text-center group">
 
@@ -335,6 +342,9 @@
                             <p class="text-xs text-primary mt-3 font-medium">Click to change file</p>
                         </div>
                     </div>
+                    @error('document_file')
+                        <p class="text-red-500 text-xs mt-1 text-center">{{ $message }}</p>
+                    @enderror
                 </div>
                 <div class="space-y-2">
                     <div class="flex items-center gap-3 p-4 border border-gray-200 rounded-lg bg-gray-50/50">
@@ -356,8 +366,9 @@
 
                 @role('Admin')
                     <div class="space-y-2 bg-yellow-50 p-3 rounded-lg border border-yellow-100">
-                        <label class="block text-sm font-bold text-dark">Assign to Division <span
-                                class="text-red-500">*</span></label>
+                        <label class="block text-sm font-bold text-dark">
+                            Assign to Division <span class="text-red-500">*</span>
+                        </label>
                         <p class="text-xs text-gray-500 mb-2">Since you are Admin, please specify which division owns this
                             document.</p>
                         <div class="relative">
@@ -376,15 +387,23 @@
                                 </svg>
                             </div>
                         </div>
+                        @error('division_id')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
                 @endrole
             </form>
             <x-slot:footer>
-                <button @click="isAddModalOpen = false" type="button"
-                    class="px-6 py-2.5 rounded-lg bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition">Cancel</button>
-                <button onclick="document.getElementById('addDocForm').submit()"
-                    class="px-6 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 shadow-md transition transform active:scale-95">Upload
-                    Document</button>
+                <div class="flex items-center justify-end gap-3 w-full">
+                    <button @click="isAddModalOpen = false" type="button"
+                        class="px-6 py-2.5 rounded-lg bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" form="addDocForm"
+                        class="px-6 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 shadow-md transition transform active:scale-95">
+                        Upload Document
+                    </button>
+                </div>
             </x-slot:footer>
         </x-drawer>
 
@@ -394,7 +413,9 @@
                 @csrf @method('PUT')
 
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-dark">Document name</label>
+                    <label class="block text-sm font-bold text-dark">
+                        Document name <span class="text-red-500">*</span>
+                    </label>
                     <input type="text" name="title" :value="editingDocument?.title"
                         class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition"
                         required>
@@ -459,7 +480,9 @@
                 </div>
 
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-dark">Change type</label>
+                    <label class="block text-sm font-bold text-dark">
+                        Change type <span class="text-red-500">*</span>
+                    </label>
                     <div class="relative">
                         <select name="change_type"
                             class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition appearance-none bg-white text-dark">
@@ -482,11 +505,16 @@
                 </div>
             </form>
             <x-slot:footer>
-                <button @click="isEditModalOpen = false" type="button"
-                    class="px-6 py-2.5 rounded-lg bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition">Cancel</button>
-                <button onclick="document.getElementById('editDocForm').submit()"
-                    class="px-6 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 shadow-md transition transform active:scale-95">Update
-                    Document</button>
+                <div class="flex items-center justify-end gap-3 w-full">
+                    <button @click="isEditModalOpen = false" type="button"
+                        class="px-6 py-2.5 rounded-lg bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" form="editDocForm"
+                        class="px-6 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 shadow-md transition transform active:scale-95">
+                        Update Document
+                    </button>
+                </div>
             </x-slot:footer>
         </x-drawer>
 
